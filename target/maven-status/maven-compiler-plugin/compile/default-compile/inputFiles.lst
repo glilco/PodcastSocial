@@ -1,2 +1,4 @@
 /home/murilo/NetBeansProjects/PodcastSocial/src/main/java/br/com/filosofiapop/podcastsocial/dominio/Podcast.java
+/home/murilo/NetBeansProjects/PodcastSocial/src/main/java/br/com/filosofiapop/podcastsocial/utils/PodcastRssHandler.java
+/home/murilo/NetBeansProjects/PodcastSocial/src/main/java/br/com/filosofiapop/podcastsocial/utils/OPMLHandler.java
 /home/murilo/NetBeansProjects/PodcastSocial/src/main/java/br/com/filosofiapop/podcastsocial/utils/ProcessadorDeOPML.java

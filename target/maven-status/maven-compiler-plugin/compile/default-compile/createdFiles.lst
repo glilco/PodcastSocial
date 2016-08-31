@@ -1,2 +1,6 @@
+br/com/filosofiapop/podcastsocial/utils/PodcastRssHandler$AtributoPod.class
+br/com/filosofiapop/podcastsocial/utils/ProcessadorDeOPML$1.class
+br/com/filosofiapop/podcastsocial/utils/OPMLHandler.class
+br/com/filosofiapop/podcastsocial/utils/PodcastRssHandler.class
 br/com/filosofiapop/podcastsocial/utils/ProcessadorDeOPML.class
 br/com/filosofiapop/podcastsocial/dominio/Podcast.class
