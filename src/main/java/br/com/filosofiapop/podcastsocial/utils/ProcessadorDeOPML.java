@@ -7,8 +7,15 @@ package br.com.filosofiapop.podcastsocial.utils;
 
 import br.com.filosofiapop.podcastsocial.dominio.Podcast;
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.StringReader;
+import java.net.ConnectException;
+import java.net.HttpURLConnection;
+import java.net.MalformedURLException;
+import java.net.SocketTimeoutException;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
@@ -24,17 +31,17 @@ import org.dom4j.Node;
 import org.dom4j.io.SAXReader;
 import org.xml.sax.EntityResolver;
 
-
 /**
  *
  * @author murilo
  */
 public class ProcessadorDeOPML {
+
     private static SAXParserFactory factory = null;
-    
-    public static List<Podcast> getPodcastsFromOPML(File file) throws DocumentException {
+
+    public static List<Podcast> getPodcastsFromOPML(File file) throws DocumentException, MalformedURLException, IOException {
         List<Podcast> podcasts = new ArrayList<>();
-        
+
         /*SAXReader reader = new SAXReader();
         reader.setValidation(false);
         reader.setEntityResolver(new EntityResolver() {
@@ -60,91 +67,140 @@ public class ProcessadorDeOPML {
             }
             
         }*/
-        if(factory == null) {
+        if (factory == null) {
             factory = SAXParserFactory.newInstance();
         }
         SAXParser saxParser;
-        
+
         OPMLHandler handler = new OPMLHandler();
 
-		try {
-			saxParser = factory.newSAXParser();
+        try {
+            saxParser = factory.newSAXParser();
 
-			// Passo 2: comanda o início do parsing
-			saxParser.parse(file, handler); // o "this" indica que a própria
-								// classe "DevmediaSAX" atuará como
-								// gerenciadora de eventos SAX.
+            // Passo 2: comanda o início do parsing
+            saxParser.parse(file, handler); // o "this" indica que a própria
+            // classe "DevmediaSAX" atuará como
+            // gerenciadora de eventos SAX.
 
-			// Passo 3: tratamento de exceções.
-		} catch (ParserConfigurationException | SAXException | IOException e) {
-			StringBuffer msg = new StringBuffer();
-			msg.append("Erro:\n");
-			msg.append(e.getMessage() + "\n");
-			msg.append(e.toString());
-			System.out.println(msg);
-		}
-                
-        List<String> urls = handler.getUrls();
-        
-        for(String url: urls) {
+            // Passo 3: tratamento de exceções.
+        } catch (ParserConfigurationException | SAXException | IOException e) {
+            StringBuffer msg = new StringBuffer();
+            msg.append("Erro:\n");
+            msg.append(e.getMessage() + "\n");
+            msg.append(e.toString());
+            System.out.println(msg);
+        }
+
+        List<URL> urls = handler.getUrls();
+
+        for (URL url : urls) {
             Podcast podcast = getPodcastFromFeed(url);
-            if(podcast != null) {
+            if (podcast != null) {
                 podcasts.add(podcast);
             }
         }
-        
-        
-        
+
         return podcasts;
     }
-    
-    private static Podcast getPodcastFromFeed(String url) throws DocumentException {
-        if(factory == null) {
+
+    private static Podcast getPodcastFromFeed(URL url) throws DocumentException, MalformedURLException, IOException {
+        if (factory == null) {
             factory = SAXParserFactory.newInstance();
         }
-        SAXParser saxParser;
-        PodcastRssHandler rssHandler = new PodcastRssHandler();
-            try {
-			saxParser = factory.newSAXParser();
-			// Passo 2: comanda o início do parsing
-                        
-			saxParser.parse(url, rssHandler); // o "this" indica que a própria
-								// classe "DevmediaSAX" atuará como
-								// gerenciadora de eventos SAX.
 
-			// Passo 3: tratamento de exceções.
-		} catch (ParserConfigurationException | SAXException | IOException e) {
-			StringBuffer msg = new StringBuffer();
-			msg.append("Erro:\n");
-			msg.append(e.getMessage() + "\n");
-			msg.append(e.toString());
-			System.out.println(msg);
-		}
-            
-            Podcast podcast = rssHandler.getPodcast();
-            podcast.setFeedUrl(url);
-            
-            if((podcast.getNome() == null || podcast.getNome().isEmpty())
-                    && (podcast.getDescricao() == null  || podcast.getDescricao().isEmpty())
-                    && (podcast.getImgUrl() == null || podcast.getImgUrl().isEmpty())) {
+        URL resourceUrl, base, next;
+        HttpURLConnection conn;
+        String location;
+        String urlString;
+
+        resourceUrl = url;
+        urlString = url.toString();
+        while (true) {
+
+            conn = (HttpURLConnection) resourceUrl.openConnection();
+
+            conn.setConnectTimeout(15000);
+            conn.setReadTimeout(15000);
+            conn.setInstanceFollowRedirects(false);   // Make the logic below easier to detect redirections
+            conn.setRequestProperty("User-Agent", "Mozilla/5.0...");
+
+            try {
+                switch (conn.getResponseCode()) {
+                    case HttpURLConnection.HTTP_MOVED_PERM:
+                    case HttpURLConnection.HTTP_MOVED_TEMP:
+                        location = conn.getHeaderField("Location");
+                        base = new URL(urlString);
+                        next = new URL(base, location);  // Deal with relative URLs
+                        urlString = next.toExternalForm();
+                        resourceUrl = new URL(urlString);
+                        continue;
+                }
+            } catch(ConnectException | SocketTimeoutException e) {
+                e.printStackTrace();
+                System.out.println("url: " + resourceUrl.toString());
                 return null;
             }
-            return podcast;
+
+            break;
+        }
+        InputStream is = null;
+        try {
+            is = conn.getInputStream();
+        } catch(FileNotFoundException e) {
+            e.printStackTrace();
+            return null;
+        }
+        
+        /*byte[] bytes = new byte[5];
+        is.read(bytes, 0, 5);
+        
+        System.out.println("url: " + urlString + " inicio: " + new String(bytes));*/
+        
+
+        SAXParser saxParser;
+        PodcastRssHandler rssHandler = new PodcastRssHandler();
+        try {
+            saxParser = factory.newSAXParser();
+            // Passo 2: comanda o início do parsing
+            
+
+            saxParser.parse(is, rssHandler); // o "this" indica que a própria
+            // classe "DevmediaSAX" atuará como
+            // gerenciadora de eventos SAX.
+
+            // Passo 3: tratamento de exceções.
+        } catch (ParserConfigurationException | SAXException | IOException e) {
+            /*StringBuffer msg = new StringBuffer();
+            msg.append("Erro:\n");
+            msg.append(e.getMessage() + "\n");
+            msg.append(e.toString());
+            System.out.println(msg);*/
+        }
+
+        Podcast podcast = rssHandler.getPodcast();
+        podcast.setFeedUrl(url.toString());
+
+        if ((podcast.getNome() == null || podcast.getNome().isEmpty())
+                && (podcast.getDescricao() == null || podcast.getDescricao().isEmpty())
+                && (podcast.getImgUrl() == null || podcast.getImgUrl().isEmpty())) {
+            return null;
+        }
+        return podcast;
     }
-    
-    public static void main(String args[]) throws DocumentException {
+
+    public static void main(String args[]) throws Exception {
         File file = new File("/home/murilo/Dropbox/podkicker_backup.opml");
         List<Podcast> podcasts = ProcessadorDeOPML.getPodcastsFromOPML(file);
-        
+
         for (Podcast p : podcasts) {
             System.out.println("----------------------------------------");
             System.out.println("Nome: " + p.getNome());
             System.out.println("--- Descricao: " + p.getDescricao());
             System.out.println("--- ImgUrl: " + p.getImgUrl());
             System.out.println("--- Feed: " + p.getFeedUrl());
-            
+
         }
-        
+
         System.out.println("Número de podcasts: " + podcasts.size());
     }
 }

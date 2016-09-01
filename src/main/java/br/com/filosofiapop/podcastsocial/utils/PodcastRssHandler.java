@@ -32,17 +32,14 @@ public class PodcastRssHandler extends DefaultHandler {
         buffer = new StringBuffer();
         
         if(node.equals("title") || node.equals("description") || node.equals("url")) {
-            System.out.println("Inicializou " + node);
             gravarElemento = true;
         }
         
         if(node.equals("itunes:image")) {
-            System.out.println("----  itunes:image");
             podcast.setImgUrl(attributes.getValue("href"));
         }
         
         if(node.equals("item")) {
-            System.out.println("ignorando");
             throw new SAXException("Todos os dados carregados");
         }
     }
@@ -61,15 +58,16 @@ public class PodcastRssHandler extends DefaultHandler {
         
         switch(node) {
             case "title":
-                System.out.println("Finalizou Title");
-                podcast.setNome(buffer.toString());
+                if(podcast.getNome() == null || podcast.getNome().equals("")) {
+                    podcast.setNome(buffer.toString());
+                }
                 break;
             case "description":
-                System.out.println("Finalizou Desc");
-                podcast.setDescricao(buffer.toString());
+                if(podcast.getDescricao() == null || podcast.getDescricao().equals("")) {
+                    podcast.setDescricao(buffer.toString());
+                }
                 break;
             case "url":
-                System.out.println("Finalizou URL");
                 podcast.setImgUrl(buffer.toString());
                 break;
         }
