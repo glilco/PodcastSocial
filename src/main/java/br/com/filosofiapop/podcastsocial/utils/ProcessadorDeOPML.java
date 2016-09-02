@@ -6,30 +6,22 @@
 package br.com.filosofiapop.podcastsocial.utils;
 
 import br.com.filosofiapop.podcastsocial.dominio.Podcast;
+import java.io.BufferedInputStream;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.StringReader;
 import java.net.ConnectException;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.SocketTimeoutException;
 import java.net.URL;
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.List;
 import javax.xml.parsers.ParserConfigurationException;
 import javax.xml.parsers.SAXParser;
 import javax.xml.parsers.SAXParserFactory;
-import org.xml.sax.InputSource;
 import org.xml.sax.SAXException;
-import org.dom4j.Attribute;
-import org.dom4j.Document;
-import org.dom4j.DocumentException;
-import org.dom4j.Node;
-import org.dom4j.io.SAXReader;
-import org.xml.sax.EntityResolver;
 
 /**
  *
@@ -39,7 +31,7 @@ public class ProcessadorDeOPML {
 
     private static SAXParserFactory factory = null;
 
-    public static List<Podcast> getPodcastsFromOPML(File file) throws DocumentException, MalformedURLException, IOException {
+    public static List<Podcast> getPodcastsFromOPML(File file) throws  MalformedURLException, IOException {
         List<Podcast> podcasts = new ArrayList<>();
 
         /*SAXReader reader = new SAXReader();
@@ -103,7 +95,7 @@ public class ProcessadorDeOPML {
         return podcasts;
     }
 
-    private static Podcast getPodcastFromFeed(URL url) throws DocumentException, MalformedURLException, IOException {
+    private static Podcast getPodcastFromFeed(URL url) throws MalformedURLException, IOException {
         if (factory == null) {
             factory = SAXParserFactory.newInstance();
         }
@@ -151,11 +143,23 @@ public class ProcessadorDeOPML {
             return null;
         }
         
-        /*byte[] bytes = new byte[5];
-        is.read(bytes, 0, 5);
+        BufferedInputStream bio = new BufferedInputStream(is);
         
-        System.out.println("url: " + urlString + " inicio: " + new String(bytes));*/
+        bio.mark(0);
+        byte[] bytesInicio = new byte[5];
         
+        do {
+            bio.read(bytesInicio, 0, 1);
+        } while(bytesInicio[0] != '<');
+        
+        bio.read(bytesInicio, 1, 4);
+        bio.reset();
+        
+        String inicio = new String(bytesInicio);
+        if(inicio != null && (!inicio.equals("<?xml") && !inicio.equals("<rss "))) {
+            System.out.println("url: " + urlString + " inicio: " + inicio);
+            return null;
+        }
 
         SAXParser saxParser;
         PodcastRssHandler rssHandler = new PodcastRssHandler();
@@ -164,7 +168,7 @@ public class ProcessadorDeOPML {
             // Passo 2: comanda o início do parsing
             
 
-            saxParser.parse(is, rssHandler); // o "this" indica que a própria
+            saxParser.parse(bio, rssHandler); // o "this" indica que a própria
             // classe "DevmediaSAX" atuará como
             // gerenciadora de eventos SAX.
 

@@ -5,11 +5,20 @@
  */
 package br.com.filosofiapop.podcastsocial.dominio;
 
+import javax.persistence.Entity;
+import javax.persistence.GeneratedValue;
+import javax.persistence.Id;
+
 /**
  *
  * @author murilo
  */
+@Entity
 public class Podcast {
+    @Id
+    @GeneratedValue
+    private Long id;
+    
     private String nome;
     private String feedUrl;
     private String descricao;
